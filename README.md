@@ -321,10 +321,25 @@ stateDiagram-v2
 
 ---
 
-## ステータス / ロードマップ
+## ステータス / ロードマップ（更新）
 
-- 現在: リポジトリ初期化・要件定義（本README）
-- 次: Rust ワークスペース作成、トレイ常駐ランナーの実装、`configure.yaml` からの EXE 生成 CLI 実装、README 運用手順の拡充、Windows（GNU）向けCI
+完了（現在）:
+
+- 環境セットアップ手順（MSYS2 UCRT64 + GNU toolchain）を整備
+- ワークスペース作成（`crates/runner`, `crates/generator`）
+- runner: 最小のWin32トレイ常駐（右クリック「終了」）
+- generator: `configure.yaml` → `dist/<name>.exe` 生成（複製方式）
+- CI: markdownlint（GitHub Actions）を導入
+- ドキュメント: README/AGENTS/SKILLS/CLAUDE を追加・整備
+
+次の予定:
+
+- runner: 起動直後に同系統EXEを停止（シングルトン運用の実装）
+- runner: トレイ表示の磨き込み（アイコン/ツールチップ/バージョン）
+- generator: 将来的にファミリー情報の埋め込み（設定からの読込orビルド時埋込）
+- CI: Windows ビルド（GNU）とリリースアセットの作成
+- 配布: アイコン付与・コードサイン（任意、可能なら）
+- ドキュメント: AWCC Per Game 設定例の拡充（スクリーンショット等・任意）
 # awcc-ctrl-exe-moc
 
 Alienware Command Center（AWCC）の「Per Game（アプリごとに照明プロファイル適用）」を“逆利用”して、外部からRGBを切り替えるための最小構成のWindows常駐トレイアプリと、名前別EXEをまとめて生成する仕組みを提供します。

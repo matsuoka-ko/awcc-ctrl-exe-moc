@@ -273,12 +273,21 @@ Windows が素の状態（何も入っていない前提）からの構築手順
 # 依存の取得・ビルド
 cargo build --release
 
-# 生成コマンドの例（最終形は実装で決定）
-# configure.yaml を元に dist/ 以下へ NAME.exe を生成
+# 生成コマンド
+# configure.yaml を元に dist/ 以下へ NAME.exe を生成（runner を毎回ビルドしてから複製）
 cargo run --release -p generator -- -c configure.yaml
+
+# 高速化したい場合はビルドをスキップ（runner を事前にビルドしている前提）
+cargo run --release -p generator -- -c configure.yaml --no-build
 ```
 
 - 生成物の出力先は既定で `dist/` を想定
+
+トレイ動作（現在のUX）:
+
+- マウスオーバー時のツールチップは表示しない（NIF_TIP 未使用）
+- 右クリックメニューの先頭に現在の EXE 名（例: `red`）を表示（クリック不可）
+- 2行目にセパレータ、3行目に `Exit` を表示（クリックで終了）
 
 ---
 

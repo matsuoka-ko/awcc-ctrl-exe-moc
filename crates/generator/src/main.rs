@@ -11,6 +11,8 @@ use std::process::Command;
 struct Opts {
     #[arg(short, long, default_value = "configure.yaml")]
     config: PathBuf,
+    #[arg(long, help = "Skip rebuilding runner (use existing target/release/runner.exe)")]
+    no_build: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -51,8 +53,8 @@ fn main() -> Result<()> {
         .join("release")
         .join(exe_name("runner"));
 
-    if !runner_exe.exists() {
-        // Try to build runner
+    if !opts.no_build {
+        // Always build runner to pick up latest changes
         let status = Command::new("cargo")
             .arg("build")
             .arg("--release")
@@ -64,6 +66,8 @@ fn main() -> Result<()> {
         if !status.success() {
             bail!("cargo build failed (runner)");
         }
+    } else if !runner_exe.exists() {
+        bail!("runner executable not found: {} (remove --no-build or build manually)", runner_exe.display());
     }
 
     for p in &cfg.profiles {
@@ -94,4 +98,3 @@ fn workspace_root() -> Result<PathBuf> {
         .context("unable to resolve workspace root")?;
     Ok(root)
 }
-

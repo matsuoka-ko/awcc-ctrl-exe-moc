@@ -1,0 +1,9 @@
+target/
+dist/
+*.pdb
+*.ilk
+*.ipdb
+*.iobj
+*.log
+.DS_Store
+

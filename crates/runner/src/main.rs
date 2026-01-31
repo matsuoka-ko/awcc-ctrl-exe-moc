@@ -2,9 +2,11 @@
 
 use std::mem::{size_of, zeroed};
 use windows::core::PCWSTR;
-use windows::Win32::Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, POINT, WPARAM};
+use windows::Win32::Foundation::{CloseHandle, HINSTANCE, HWND, LPARAM, LRESULT, POINT, WPARAM};
 use windows::Win32::Graphics::Gdi::HBRUSH;
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
+use windows::Win32::System::Diagnostics::ToolHelp::*;
+use windows::Win32::System::Threading::*;
 use windows::Win32::UI::Shell::{Shell_NotifyIconW, NIF_ICON, NIF_MESSAGE, NIM_ADD, NIM_DELETE, NOTIFYICONDATAW};
 use windows::Win32::UI::WindowsAndMessaging::*;
 
@@ -64,6 +66,15 @@ fn main() -> windows::core::Result<()> {
         }
 
         ShowWindow(hwnd, SW_HIDE);
+
+        // Singleton: terminate sibling color EXEs listed in family file
+        kill_sibling_processes();
+
+        // Off-mode: if this exe is listed in off.txt, exit immediately (no tray)
+        if is_off_exe() {
+            let _ = DestroyWindow(hwnd);
+            return Ok(());
+        }
 
         add_tray_icon(hwnd)?;
 
@@ -152,4 +163,76 @@ unsafe extern "system" fn wndproc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: 
     }
 
     DefWindowProcW(hwnd, msg, wparam, lparam)
+}
+
+fn kill_sibling_processes() {
+    // Read family file from the exe directory: family.txt (one name per line)
+    let Ok(exe_path) = std::env::current_exe() else { return; };
+    let exe_stem = exe_path.file_stem().and_then(|s| s.to_str()).unwrap_or("").to_ascii_lowercase();
+    let dir = exe_path.parent().unwrap_or_else(|| std::path::Path::new("."));
+    let family_path = dir.join("family.txt");
+    let Ok(text) = std::fs::read_to_string(&family_path) else { return; };
+    let mut targets: Vec<String> = text
+        .lines()
+        .map(|l| l.trim())
+        .filter(|l| !l.is_empty() && !l.starts_with('#'))
+        .map(|l| {
+            let mut name = l.to_string();
+            if !name.to_ascii_lowercase().ends_with(".exe") {
+                name.push_str(".exe");
+            }
+            name.to_ascii_lowercase()
+        })
+        .collect();
+    if targets.is_empty() { return; }
+
+    // Do not target self
+    targets.retain(|n| n.strip_suffix(".exe").unwrap_or(n) != exe_stem);
+    if targets.is_empty() { return; }
+
+    unsafe {
+        let snapshot = match CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) {
+            Ok(h) => h,
+            Err(_) => return,
+        };
+        let mut entry: PROCESSENTRY32W = std::mem::zeroed();
+        entry.dwSize = std::mem::size_of::<PROCESSENTRY32W>() as u32;
+        let mut ok = Process32FirstW(snapshot, &mut entry).is_ok();
+        let self_pid = GetCurrentProcessId();
+        while ok {
+            let name = wchar_to_lower_string(&entry.szExeFile);
+            if targets.iter().any(|t| *t == name) && entry.th32ProcessID != self_pid {
+                if let Ok(h) = OpenProcess(PROCESS_TERMINATE, false, entry.th32ProcessID) {
+                    let _ = TerminateProcess(h, 0);
+                    let _ = CloseHandle(h);
+                }
+            }
+            ok = Process32NextW(snapshot, &mut entry).is_ok();
+        }
+        let _ = CloseHandle(snapshot);
+    }
+}
+
+fn wchar_to_lower_string(buf: &[u16]) -> String {
+    // Convert up to NUL terminator
+    let len = buf.iter().position(|&c| c == 0).unwrap_or(buf.len());
+    let s = String::from_utf16_lossy(&buf[..len]);
+    s.to_ascii_lowercase()
+}
+
+fn is_off_exe() -> bool {
+    let Ok(path) = std::env::current_exe() else { return false; };
+    let dir = match path.parent() { Some(d) => d, None => return false };
+    let off_path = dir.join("off.txt");
+    let Ok(text) = std::fs::read_to_string(off_path) else { return false; };
+    let my_name = path.file_name().and_then(|s| s.to_str()).map(|s| s.to_ascii_lowercase());
+    let Some(my_name) = my_name else { return false; };
+    for line in text.lines() {
+        let name = line.trim();
+        if name.is_empty() || name.starts_with('#') { continue; }
+        if name.eq_ignore_ascii_case(&my_name) {
+            return true;
+        }
+    }
+    false
 }

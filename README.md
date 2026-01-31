@@ -93,12 +93,14 @@ profiles:
 ```yaml
 version: 1
 output_dir: dist
+off_name: off
 profiles:
   - name: streaming
   - name: dark
 ```
 
 - `output_dir` 未指定時は `dist` をデフォルトにします
+- `off_name` を指定すると、同名の EXE（例: `off.exe`）を生成します。この EXE は起動直後に同系統 EXE を停止し、自身も終了します（System Default=OFF に復帰）。
 
 ---
 
@@ -288,6 +290,11 @@ cargo run --release -p generator -- -c configure.yaml --no-build
 - マウスオーバー時のツールチップは表示しない（NIF_TIP 未使用）
 - 右クリックメニューの先頭に現在の EXE 名（例: `red`）を表示（クリック不可）
 - 2行目にセパレータ、3行目に `Exit` を表示（クリックで終了）
+
+シングルトン（同系統 EXE の自動停止）:
+
+- generator は `dist/family.txt` に同系統の EXE 名一覧（`*.exe`）を書き出します。
+- runner は起動直後にこのファイルを読み、自分以外の EXE 名に一致するプロセスを終了します。
 
 ---
 

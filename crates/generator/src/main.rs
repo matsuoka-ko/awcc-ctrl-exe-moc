@@ -20,6 +20,8 @@ struct Config {
     version: u32,
     #[serde(default)]
     output_dir: Option<String>,
+    #[serde(default)]
+    off_name: Option<String>,
     profiles: Vec<Profile>,
 }
 
@@ -75,6 +77,29 @@ fn main() -> Result<()> {
         fs::copy(&runner_exe, &dest)
             .with_context(|| format!("copy {} -> {}", runner_exe.display(), dest.display()))?;
         println!("generated: {}", dest.display());
+    }
+
+    // Write family file listing exe names (one per line)
+    let family_path = Path::new(&out_dir).join("family.txt");
+    let mut family = String::new();
+    for p in &cfg.profiles {
+        family.push_str(&exe_name(&p.name));
+        family.push('\n');
+    }
+    fs::write(&family_path, family).with_context(|| format!("write {}", family_path.display()))?;
+    println!("updated: {}", family_path.display());
+
+    // Optional: generate OFF exe that stops siblings then exits
+    if let Some(off) = cfg.off_name.as_ref() {
+        let off_dest = Path::new(&out_dir).join(exe_name(off));
+        fs::copy(&runner_exe, &off_dest)
+            .with_context(|| format!("copy {} -> {}", runner_exe.display(), off_dest.display()))?;
+        println!("generated: {}", off_dest.display());
+        // Write off.txt with the exact EXE name
+        let off_list_path = Path::new(&out_dir).join("off.txt");
+        fs::write(&off_list_path, format!("{}\n", exe_name(off)))
+            .with_context(|| format!("write {}", off_list_path.display()))?;
+        println!("updated: {}", off_list_path.display());
     }
 
     Ok(())

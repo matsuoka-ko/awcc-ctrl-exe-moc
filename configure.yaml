@@ -1,8 +1,8 @@
 version: 1
 output_dir: dist
+off_name: off
 profiles:
   - name: red
   - name: blue
   - name: green
   - name: warm_white
-

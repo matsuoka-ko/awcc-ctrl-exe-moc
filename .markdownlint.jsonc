@@ -1,0 +1,14 @@
+{
+  // Base rules
+  "default": true,
+
+  // Allow long lines (diagrams, URLs, tables, etc.)
+  "MD013": false,
+
+  // Enforce first line as a top-level heading
+  "MD041": true,
+
+  // Code blocks should be fenced (we already use ```)
+  "MD046": { "style": "fenced" }
+}
+

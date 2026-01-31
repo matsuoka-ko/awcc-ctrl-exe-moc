@@ -2,6 +2,7 @@ use anyhow::{bail, Context, Result};
 use clap::Parser;
 use regex::Regex;
 use serde::Deserialize;
+use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -72,6 +73,27 @@ fn main() -> Result<()> {
         bail!("runner executable not found: {} (remove --no-build or build manually)", runner_exe.display());
     }
 
+    // Compute desired set from current config (profile exes + optional off exe)
+    let mut desired: HashSet<String> = HashSet::new();
+    for p in &cfg.profiles {
+        desired.insert(exe_name(&p.name));
+    }
+    if let Some(off) = cfg.off_name.as_ref() {
+        desired.insert(exe_name(off));
+    }
+
+    // Remove obsolete exes that were managed in previous runs but are no longer desired
+    let prev = read_prev_managed(&out_dir);
+    for name in prev.difference(&desired) {
+        let path = Path::new(&out_dir).join(name);
+        if path.exists() {
+            match fs::remove_file(&path) {
+                Ok(_) => println!("removed: {}", path.display()),
+                Err(e) => eprintln!("warn: could not remove {}: {}", path.display(), e),
+            }
+        }
+    }
+
     for p in &cfg.profiles {
         let dest = Path::new(&out_dir).join(exe_name(&p.name));
         fs::copy(&runner_exe, &dest)
@@ -122,4 +144,29 @@ fn workspace_root() -> Result<PathBuf> {
         .map(|p| p.to_path_buf())
         .context("unable to resolve workspace root")?;
     Ok(root)
+}
+
+fn read_prev_managed(out_dir: &str) -> HashSet<String> {
+    let mut set = HashSet::new();
+    // family.txt lists the profile exes
+    let fam = Path::new(out_dir).join("family.txt");
+    if let Ok(s) = fs::read_to_string(&fam) {
+        for l in s.lines() {
+            let name = l.trim();
+            if !name.is_empty() && !name.starts_with('#') {
+                set.insert(name.to_string());
+            }
+        }
+    }
+    // off.txt lists the off exe (single line)
+    let off = Path::new(out_dir).join("off.txt");
+    if let Ok(s) = fs::read_to_string(&off) {
+        for l in s.lines() {
+            let name = l.trim();
+            if !name.is_empty() && !name.starts_with('#') {
+                set.insert(name.to_string());
+            }
+        }
+    }
+    set
 }

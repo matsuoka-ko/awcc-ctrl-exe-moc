@@ -284,6 +284,7 @@ cargo run --release -p generator -- -c configure.yaml --no-build
 ```
 
 - 生成物の出力先は既定で `dist/` を想定
+- generator 実行時、以前の構成で生成されていた EXE のうち、現在の `configure.yaml` に存在しないものは自動で削除します（`dist/family.txt` と `dist/off.txt` に基づくクリーンアップ）。
 
 トレイ動作（現在のUX）:
 

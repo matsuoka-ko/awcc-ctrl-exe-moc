@@ -5,9 +5,13 @@
 [![MSYS2](https://img.shields.io/badge/MSYS2-UCRT64-green)](https://www.msys2.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Alienware Command Center（AWCC）の「Per Game（アプリごとに照明プロファイル適用）」を“逆利用”して、外部からRGBを切り替えるための最小構成のWindows常駐トレイアプリと、名前別EXEをまとめて生成する仕組みを提供します。
+AlienwareのゲーミングPCにおいて、Alienware Command Center（AWCC） を直接起動して手動で色を設定せずとも、外部アプリケーション（例: Stream Deck）から Alienware のゲーミングPCのライト色を制御できるようにします。
 
-> このアプリはAWCCのプロファイルやLEDを直接制御しません。特定のEXEが起動していることをAWCCに認識させ、そのEXEに紐づけた照明プロファイルをAWCC側で適用させます。
+AWCCの「Per Game（アプリごとに照明プロファイル適用）」を“逆利用”して、外部からRGBを切り替えるための最小構成のWindows常駐トレイアプリと、名前別EXEをまとめて生成する仕組みを提供します。
+
+このプロジェクトを利用して生成された EXE を手動で AWCC（Per Game）に登録し、各 EXE に対応する色（照明プロファイル）を割り当てることで、外部からの色切り替えが成立します。2026年1月現在における現行の AWCC には公開 API が存在しないため、外部から直接プロファイルを切り替えることはできません。その制約を回避するために、Per Game の「アプリごとにプロファイルを適用する」仕組みを逆利用しています。
+
+このアプリはAWCCのプロファイルやLEDを直接制御しません。特定のEXEが起動していることをAWCCに認識させ、そのEXEに紐づけた照明プロファイルをAWCC側で適用させます。
 
 ---
 
@@ -54,9 +58,9 @@ Stream Deck
 - Windows専用（GUIサブシステム、コンソールウィンドウ非表示）
 - 起動したら常駐（メッセージループ）
 - タスクトレイにアイコンを表示
-- 右クリックメニューに「終了」だけを表示し、それで終了可能
-- 色やプロファイル内容は AWCC 側で管理（本アプリは AWCC を直接操作しない）
-- 起動直後に「同系統の他色 EXE（同一ファミリー）」が動作中なら安全に終了させ、自分だけが残る（シングルトン運用）
+- 右クリックメニューに「Exit」だけを表示し、それで終了可能
+- マウスオーバー時にツールチップで「awcc-ctrl-exe-moc - 色」を表示
+- 起動直後に family.txt に基づき同系統 EXE を自動停止（シングルトン）
 
 ### 2) 生成機構
 
@@ -81,12 +85,6 @@ profiles:
   - name: dark
   - name: meeting
 ```
-
-生成されるEXE:
-
-- `streaming.exe`
-- `dark.exe`
-- `meeting.exe`
 
 任意項目（あれば便利）:
 
@@ -225,7 +223,7 @@ Windows が素の状態（何も入っていない前提）からの構築手順
 
     ```powershell
     rustc -Vv        # host: x86_64-pc-windows-gnu が期待値
-    Get-Command gcc  # C:\msys64\ucrt64\bin\gcc.exe を解決（PowerShell）
+    Get-Command gcc  # C:\\msys64\\ucrt64\\bin\\gcc.exe を解決（PowerShell）
     where.exe gcc    # cmd の where を明示
     ```
 
@@ -262,17 +260,15 @@ Windows が素の状態（何も入っていない前提）からの構築手順
 - 必須挙動:
   - 隠しウィンドウを作る（メッセージ受信のため）
   - トレイアイコンを追加
-  - 右クリックでコンテキストメニューを出し、「終了」クリックで終了
+  - 右クリックでコンテキストメニューを出し、「Exit」クリックで終了
   - 終了時にトレイアイコン削除
 
 ---
 
 ## ビルドと生成
 
-実装完了後の想定手順（暫定）:
-
 ```powershell
-# 依存の取得・ビルド
+# 依存の取得・ビルド（workspace 全体）
 cargo build --release
 
 # 生成コマンド
@@ -292,11 +288,6 @@ cargo run --release -p generator -- -c configure.yaml --no-build
 - 右クリックメニューの先頭に同じ文字列（例: `awcc-ctrl-exe-moc - red`）を表示（クリック不可）
 - 2行目にセパレータ、3行目に `Exit` を表示（クリックで終了）
 
-シングルトン（同系統 EXE の自動停止）:
-
-- generator は `dist/family.txt` に同系統の EXE 名一覧（`*.exe`）を書き出します。
-- runner は起動直後にこのファイルを読み、自分以外の EXE 名に一致するプロセスを終了します。
-
 ---
 
 ## 運用（AWCC / Stream Deck）
@@ -309,7 +300,12 @@ AWCC 側:
 Stream Deck 側:
 
 - 「NAME」ボタン: `dist/NAME.exe` を起動（他色EXEは起動直後に本アプリ側で自動停止）
-- 「Off」ボタン: すべての色EXEを終了（任意運用。何も起動していない状態は System Default=OFF）
+- 「Off」ボタン: `dist/off.exe` を起動（同系統EXEを停止し System Default に復帰）
+
+シングルトン（同系統 EXE の自動停止）:
+
+- generator は `dist/family.txt` に同系統の EXE 名一覧（`*.exe`）を書き出します。
+- runner は起動直後にこのファイルを読み、自分以外の EXE 名に一致するプロセスを終了します。
 
 ---
 
@@ -317,7 +313,7 @@ Stream Deck 側:
 
 - `configure.yaml` に指定した名前のEXEが `dist/` に生成される
 - `NAME.exe` 起動 → AWCCが `NAME.exe` に紐づく照明に切り替わる
-- トレイの右クリックメニューから「終了」で終了できる
+- トレイの右クリックメニューから「Exit」で終了できる
 - `NAME.exe` 終了 → System Default（OFF）に戻る
 - `configure.yaml` に名前を追加すれば、同様にEXEが追加生成できる（拡張容易）
 
@@ -395,7 +391,7 @@ stateDiagram-v2
 
 応用メモ:
 
-- 既定を OFF 運用にしたい場合、Off ボタンは `taskkill /IM streaming.exe /IM dark.exe /IM meeting.exe /F` を実行（任意）
+- 既定を OFF 運用にしたい場合、Off ボタンは `dist/off.exe` を起動
 - EXE 名を増やしたら、本アプリの生成時にファミリーとして内包されるため、起動直後の自動停止対象に含まれます
 
 ---
@@ -430,13 +426,7 @@ stateDiagram-v2
     - 「Blue」: `dist/blue.exe` を起動
     - 「Green」: `dist/green.exe` を起動
     - 「Warm」: `dist/warm_white.exe` を起動
-    - 「Off」: すべての色EXEを停止
-
-      - 例（PowerShell）:
-
-        ```powershell
-        powershell -NoProfile -WindowStyle Hidden -Command "Get-Process red,blue,green,warm_white -ErrorAction SilentlyContinue | Stop-Process -Force"
-        ```
+    - 「Off」: `dist/off.exe` を起動
 
 ポイント:
 
@@ -456,18 +446,24 @@ stateDiagram-v2
 
 完了（現在）:
 
-- 環境セットアップ手順（MSYS2 UCRT64 + GNU toolchain）を整備
-- ワークスペース作成（`crates/runner`, `crates/generator`）
-- runner: 最小のWin32トレイ常駐（右クリック「終了」）
-- generator: `configure.yaml` → `dist/<name>.exe` 生成（複製方式）
-- CI: markdownlint（GitHub Actions）を導入
-- ドキュメント: README/AGENTS/SKILLS/CLAUDE を追加・整備
+- セットアップ手順（MSYS2 UCRT64 + GNU toolchain）
+- ワークスペース構成（`crates/runner`, `crates/generator`）
+- runner:
+  - トレイ常駐、右クリックメニュー（先頭に「awcc-ctrl-exe-moc - 色」（クリック不可）／下段に `Exit`）
+  - マウスオーバーでツールチップ表示（「awcc-ctrl-exe-moc - 色」）
+  - 起動直後に family.txt に基づき同系統 EXE を自動停止（シングルトン）
+  - `off.exe` は同系統停止後、自身も即終了（System Default に復帰）
+- generator:
+  - `configure.yaml` から `dist/<name>.exe` を生成（毎回 runner をビルド → 複製。`--no-build` でスキップ可）
+  - `off_name` 対応（`off.exe` と `off.txt`）
+  - 以前の構成に存在し現構成に無い EXE を自動削除（`family.txt` / `off.txt` を参照）
+- ドキュメント: README / AGENTS.md / SKILLS.md / CLAUDE.md 整備
+- CI: markdownlint、Windows のビルド＋ generator ユニットテスト（`cargo test -p generator`）
+- ユニットテスト（generator）: `exe_name` / `read_prev_managed` / `remove_obsolete`
 
 次の予定:
 
-- runner: 起動直後に同系統EXEを停止（シングルトン運用の実装）
-- runner: トレイ表示の磨き込み（アイコン/ツールチップ/バージョン）
-- generator: 将来的にファミリー情報の埋め込み（設定からの読込orビルド時埋込）
-- CI: Windows ビルド（GNU）とリリースアセットの作成
-- 配布: アイコン付与・コードサイン（任意、可能なら）
-- ドキュメント: AWCC Per Game 設定例の拡充（スクリーンショット等・任意）
+- generator: 実行中 EXE の検出と保護（警告/スキップ or `off.exe` 自動実行→再試行）
+- runner: 終了手順の丁寧化（WM_CLOSE → 待機 → Terminate）
+- runner: アイコン/バージョン情報（Windows リソース）埋め込み
+- ドキュメント: AWCC 設定スクリーンショット、Stream Deck テンプレの追加

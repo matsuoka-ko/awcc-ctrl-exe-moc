@@ -24,6 +24,12 @@
   - 例外対応や裁量変更は、コミットメッセージか併設 Issue に理由を明記し、設定変更は最小限・同一変更セットで行う。
   - 共同開発に移行したら、すべての変更を PR ベースに切り替える。
 
+## ドキュメント運用（AGENTS / SKILLS）
+
+- 本ファイル（AGENTS.md）は規範（ルール/方針）を記載する。仕様・運用に影響する変更時は必ず更新する。
+- 学び・教訓・注意点は SKILLS.md に集約し、作業のたびに随時更新する（非規範）。
+- 文量が増えて可読性が下がった場合は、将来 `docs/skills/` などに分割を検討する。
+
 ## 設計方針（要点）
 
 - ランナー（各 `NAME.exe`）
@@ -42,6 +48,11 @@
 - MinGW: MSYS2 UCRT64（`C:\msys64\ucrt64\bin` を PATH に追加）。
 - crate 候補: `windows`（Win32 API 呼び出し）、`clap`（CLI）、`serde_yaml`（設定）。
 - VS 不要。GNU ツールチェーンでビルド可能にする。
+
+### 運用ノート（環境）
+
+- PATH 追記は `setx` を避け、GUI（`sysdm.cpl` → 環境変数）または PowerShell の .NET API でユーザー Path を編集する（`setx` は 1024 文字制限に注意）。
+- PowerShell で実行ファイルの所在確認は `Get-Command <name>` か `where.exe <name>` を使う（`where` は `Where-Object` の別名）。
 
 ## コーディング規約（Rust）
 

@@ -6,4 +6,5 @@ dist/
 *.iobj
 *.log
 .DS_Store
-
+Cargo.lock
+configure.yaml

@@ -23,7 +23,18 @@ struct Config {
     output_dir: Option<String>,
     #[serde(default)]
     off_name: Option<String>,
+    #[serde(default)]
+    awcc: Option<AwccConfig>,
     profiles: Vec<Profile>,
+}
+
+#[derive(Debug, Deserialize)]
+struct AwccConfig {
+    path: String,
+    #[serde(default)]
+    args: Vec<String>,
+    #[serde(default)]
+    start_minimized: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -114,6 +125,35 @@ fn main() -> Result<()> {
         fs::write(&off_list_path, format!("{}\n", exe_name(off)))
             .with_context(|| format!("write {}", off_list_path.display()))?;
         println!("updated: {}", off_list_path.display());
+    }
+
+    // Optional: write AWCC launch settings for runner
+    if let Some(awcc) = cfg.awcc.as_ref() {
+        let awcc_path = Path::new(&out_dir).join("awcc_path.txt");
+        fs::write(&awcc_path, format!("{}\n", awcc.path))
+            .with_context(|| format!("write {}", awcc_path.display()))?;
+        println!("updated: {}", awcc_path.display());
+
+        let awcc_args = Path::new(&out_dir).join("awcc_args.txt");
+        if awcc.args.is_empty() {
+            if awcc_args.exists() {
+                let _ = fs::remove_file(&awcc_args);
+            }
+        } else {
+            let mut buf = String::new();
+            for a in &awcc.args {
+                buf.push_str(a);
+                buf.push('\n');
+            }
+            fs::write(&awcc_args, buf).with_context(|| format!("write {}", awcc_args.display()))?;
+            println!("updated: {}", awcc_args.display());
+        }
+
+        let awcc_min = Path::new(&out_dir).join("awcc_start_minimized.txt");
+        let start_min = awcc.start_minimized.unwrap_or(true);
+        fs::write(&awcc_min, format!("{}\n", if start_min { "true" } else { "false" }))
+            .with_context(|| format!("write {}", awcc_min.display()))?;
+        println!("updated: {}", awcc_min.display());
     }
 
     Ok(())

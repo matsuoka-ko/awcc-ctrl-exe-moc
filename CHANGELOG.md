@@ -6,6 +6,8 @@
 
 - generator: 実行中 EXE によるロック検出の保護（警告/スキップ、または `off.exe` 自動実行→再試行）の検討
 - runner: 終了手順の丁寧化（WM_CLOSE → 待機 → Terminate など）
+- runner: 実験的な前面維持（`keep_foreground.txt` がある場合、1x1 の前面・最前面ウィンドウを維持。フォーカスは奪わない）
+- runner/generator: `awcc` 設定で AWCC 未起動時にバックグラウンド起動（任意）
 - CI: Windows Release ビルド・アーティファクトの公開（任意）
 
 ## [1.0.0] - 2026-01-31

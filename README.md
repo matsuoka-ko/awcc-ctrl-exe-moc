@@ -92,6 +92,10 @@ profiles:
 version: 1
 output_dir: dist
 off_name: off
+awcc:
+  path: "C:\\Program Files\\Alienware\\AWCC\\AWCC.exe"
+  args: []
+  start_minimized: true
 profiles:
   - name: streaming
   - name: dark
@@ -99,6 +103,11 @@ profiles:
 
 - `output_dir` 未指定時は `dist` をデフォルトにします
 - `off_name` を指定すると、同名の EXE（例: `off.exe`）を生成します。この EXE は起動直後に同系統 EXE を停止し、自身も終了します（System Default=OFF に復帰）。
+- `awcc` を指定すると、runner 起動時に AWCC が未起動ならバックグラウンド起動します。
+  - `path`: AWCC のフルパス（必須）
+  - `args`: 起動引数（任意）
+  - `start_minimized`: `true` の場合は最小化で起動（既定は `true`）
+- `awcc` が未指定の場合は、自動起動を行いません（従来どおり）。
 
 ---
 
@@ -306,6 +315,11 @@ Stream Deck 側:
 
 - generator は `dist/family.txt` に同系統の EXE 名一覧（`*.exe`）を書き出します。
 - runner は起動直後にこのファイルを読み、自分以外の EXE 名に一致するプロセスを終了します。
+
+実験的: 前面維持（AWCC の前面依存対策）
+
+- `dist/keep_foreground.txt` を置くと、1x1 の常駐ウィンドウを前面・最前面に維持します。
+- 最前面にはしますが、フォーカスは奪いません（SWP_NOACTIVATE）。検証用途に限定してください。
 
 ---
 
